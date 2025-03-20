@@ -3,7 +3,7 @@ an image-data manipulation tool for creating glitch-art/databend effects with a 
 
 
 ## about
-pybend is a python-based application that treats images as raw data, applying distortions to create controlled glitch art. it allows you to manipulate images in ways similar to how data can be "bent" in applications like audacity
+pybend is a python-based application that treats images as raw data and applies distortions to create controlled glitch art. it allows you to manipulate images in ways similar to how data can be "bent" in applications like audacity but with a single click
 
 ## examples
 
@@ -53,14 +53,14 @@ py bend.py
 ## effects
 pybend includes several effects for image manipulation:
 
-- **color-range shifter**: shifts specific color ranges to create unique distortions
-- **chunk duplication**: duplicates chunks of image data for fragmented effects
+- **color-range shifter**: remaps specific narrow color ranges to discolor small regions 
+- **chunk duplication**: duplicates chunks of image data
 - **phantom regions**: extracts single-channel data to impose ghost-like artifacts upon the image
-- **palette swap**: remaps colors for dramatic transformations
-- **zeta inverse**: applies mathematical transformations to pixel data (bloated inversion, but it looks 10x cooler)
-- **wave propagation**: creates wavelike distortions across the image
+- **palette swap**: remaps colors in blocks
+- **zeta inverse**: applies 0-20-step zeta to pixel data (bloated inversion, but it looks 10x cooler)
+- **wave propagation**: creates wavelike distortions
 - **selective channel corruption**: corrupts specific rgb channels
-- **bitdepth reduction**: reduces bit depth for pixelation and color banding
+- **bitdepth reduction**: reduces bit depth for noisy posterization effect
 - **reverser**: reverses data segments
 - **mirror**: creates mirror effects
 
