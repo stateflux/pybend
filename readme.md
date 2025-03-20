@@ -5,6 +5,8 @@ an image-data manipulation tool for creating glitch-art/databend effects with a 
 ## about
 pybend is a python-based application that treats images as raw data, applying distortions to create controlled glitch art. it allows you to manipulate images in ways similar to how data can be "bent" in applications like audacity
 
+## examples
+
 <div align="center">
   <table>
     <tr>
@@ -43,7 +45,7 @@ py bend.py
 ```
 
 ## usage
-1. launch the application (first init can be slow as numba compiles)
+1. launch the application (first launch can be slow as numba compiles - subsequent runs will be faster)
 2. drag and drop an image onto the interface
 3. change effect intensity to achieve desired results
 4. save your creation(s) when satisfied
