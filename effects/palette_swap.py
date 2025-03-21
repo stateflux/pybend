@@ -63,7 +63,7 @@ class PaletteSwap(Effect):
                 palette_types.append(random.randint(0, 7))  # any random palette
         
         # create a persistent array to hold all parameters
-        # this prevents garbage collection from destroying param arrays during jit execution
+        # this prevents gc from destroying param arrays during jit execution
         all_params = np.zeros((num_regions, 1), dtype=np.float64)
         
         # fill the persistent array 
@@ -101,8 +101,9 @@ class PaletteSwap(Effect):
             # extract single param row - this is a view not a copy, so parent won't be gc'd
             params = all_params[i]
             
-            # transform using our hsv transform function
-            transformed_region = apply_hsv_transform(region, get_transform_function(palette_types[i]), params)
+            # transform using our hsv transform function with the palette type directly
+            # instead of passing function references that numba can't handle
+            transformed_region = apply_palette_transform(region, palette_types[i], params)
             
             # copy back to main image
             apply_to_region(img_array, transformed_region, y_start, x_start)
@@ -110,26 +111,111 @@ class PaletteSwap(Effect):
         # convert back to bytearray and return
         return bytearray(img_array.tobytes())
 
-@jit(nopython=True)
-def get_transform_function(transform_type):
-    """grab the right transform function for the given type"""
-    # needed because numba sucks at passing functions as args directly
-    if transform_type == 0:
-        return transform_complementary
-    elif transform_type == 1:
-        return transform_hue_shift
-    elif transform_type == 2:
-        return transform_grayscale
-    elif transform_type == 3:
-        return transform_neon
-    elif transform_type == 4:
-        return transform_vintage
-    elif transform_type == 5:
-        return transform_vaporwave
-    elif transform_type == 6:
-        return transform_extreme_contrast
-    else:  # transform_type == 7
-        return transform_color_blast
+# Replace the existing apply_hsv_transform + get_transform_function approach
+# with a single function that handles the transform type directly
+@jit(nopython=True, parallel=True, cache=True)
+def apply_palette_transform(region, transform_type, params):
+    """apply hsv transformation based directly on transform type"""
+    # convert rgb to hsv - gotta do this manually for arrays
+    height, width, _ = region.shape
+    hsv_region = np.empty_like(region, dtype=np.float64)  # use float64 to avoid type conflicts
+    
+    # convert rgb to hsv pixel by pixel with parallel processing
+    for y in prange(height):
+        for x in range(width):
+            r, g, b = region[y, x]
+            h, s, v = rgb_to_hsv(r/255.0, g/255.0, b/255.0)
+            hsv_region[y, x, 0] = h
+            hsv_region[y, x, 1] = s
+            hsv_region[y, x, 2] = v
+    
+    # grab references to channels for vectorized ops
+    h, s, v = hsv_region[:, :, 0], hsv_region[:, :, 1], hsv_region[:, :, 2]
+    
+    # apply transformation based on type
+    if transform_type == 0:  # complementary
+        h = (h + 0.5) % 1.0
+        s = np.minimum(1.0, s * 1.3)  # bump sat
+        v = np.minimum(1.0, v * 1.1)  # small brightness bump
+    
+    elif transform_type == 1:  # hue_shift
+        h = (h + params[0]) % 1.0
+        s = np.minimum(1.0, s * (1.0 + params[0]))
+    
+    elif transform_type == 2:  # grayscale
+        s *= (1 - params[0])
+        # handle the shadows/highlights with loops since numba hates boolean masks
+        for y in prange(height):
+            for x in range(width):
+                if v[y, x] < 0.5:
+                    v[y, x] = max(0.0, v[y, x] * (0.9 - 0.2 * params[0]))  # darken shadows
+                else:
+                    v[y, x] = min(1.0, v[y, x] * (1.1 + 0.2 * params[0]))  # brighten highlights
+    
+    elif transform_type == 3:  # neon
+        intensity = params[0]
+        s = np.minimum(1.0, s * (1.5 + intensity * 0.5))  # up to 2x sat
+        v = np.minimum(1.0, v * (1.2 + intensity * 0.3))  # up to 1.5x brightness
+        h_shift = 0.15
+        h = (h + h_shift) % 1.0
+    
+    elif transform_type == 4:  # vintage
+        intensity = params[0]
+        s = s * (0.7 - intensity * 0.3)
+        h = h * 0.8 + 0.1
+        v = v * (0.9 - intensity * 0.1)
+    
+    elif transform_type == 5:  # vaporwave
+        intensity = params[0]
+        # do the conditional transformations with loops since numba hates boolean masks
+        for y in prange(height):
+            for x in range(width):
+                if h[y, x] < 0.3 or h[y, x] > 0.8:
+                    h[y, x] = (h[y, x] * 0.5 + 0.7) % 1.0
+                
+                if (h[y, x] > 0.7 and h[y, x] < 0.9) or (h[y, x] > 0.4 and h[y, x] < 0.6):
+                    s[y, x] = min(1.0, s[y, x] * (1.0 + intensity))
+        
+        v = np.minimum(1.0, v * (1.0 + intensity * 0.3))
+    
+    elif transform_type == 6:  # extreme_contrast
+        intensity = params[0]
+        # explicit loops for conditional stuff - numba limitation
+        for y in prange(height):
+            for x in range(width):
+                if v[y, x] < 0.5:
+                    v[y, x] = v[y, x] * (1.0 - intensity * 0.8)
+                else:
+                    v[y, x] = min(1.0, v[y, x] * (1.0 + intensity * 0.5))
+                
+                s[y, x] = min(1.0, s[y, x] * (1.0 + intensity * 0.5))
+    
+    else:  # transform_type == 7, color_blast
+        intensity = params[0]
+        h = (h * 0.1 + 0.42) % 1.0
+        s = np.minimum(1.0, s * 0.2 + 0.8 * intensity)
+        # more explicit loops because of numba's boolean mask limitations
+        for y in prange(height):
+            for x in range(width):
+                if v[y, x] > 0.3:
+                    v[y, x] = min(1.0, v[y, x] * (1.0 + intensity * 0.3))
+    
+    # put channels back into hsv array
+    hsv_region[:, :, 0] = h
+    hsv_region[:, :, 1] = s
+    hsv_region[:, :, 2] = v
+    
+    # convert back to rgb with parallel processing
+    result = np.empty_like(region)
+    for y in prange(height):
+        for x in range(width):
+            h, s, v = hsv_region[y, x]
+            r, g, b = hsv_to_rgb(h, s, v)
+            result[y, x, 0] = min(255, int(r * 255))
+            result[y, x, 1] = min(255, int(g * 255))
+            result[y, x, 2] = min(255, int(b * 255))
+            
+    return result
 
 @jit(nopython=True, cache=True)
 def transform_complementary(h, s, v, params):
@@ -160,8 +246,8 @@ def transform_grayscale(h, s, v, params):
 def transform_neon(h, s, v, params):
     """neon glow - makes shit glow with crazy saturation"""
     intensity = params[0]
-    s = min(1.0, s * (1.5 + intensity * 0.5))  # up to 2x sat
-    v = min(1.0, v * (1.2 + intensity * 0.3))  # up to 1.5x brightness
+    s = np.minimum(1.0, s * (1.5 + intensity * 0.5))  # up to 2x sat
+    v = np.minimum(1.0, v * (1.2 + intensity * 0.3))  # up to 1.5x brightness
     
     # fixed hue shift - no calcs needed
     h_shift = 0.15
@@ -191,10 +277,10 @@ def transform_vaporwave(h, s, v, params):
     
     # crank sat for pinks and cyans
     if (h > 0.7 and h < 0.9) or (h > 0.4 and h < 0.6):
-        s = min(1.0, s * (1.0 + intensity))
+        s = np.minimum(1.0, s * (1.0 + intensity))
     
     # pump brightness
-    v = min(1.0, v * (1.0 + intensity * 0.3))
+    v = np.minimum(1.0, v * (1.0 + intensity * 0.3))
     return h, s, v
 
 @jit(nopython=True, cache=True)
@@ -207,10 +293,10 @@ def transform_extreme_contrast(h, s, v, params):
         v = v * (1.0 - intensity * 0.8)
     else:
         v = v * (1.0 + intensity * 0.5)
-        v = min(1.0, v)
+        v = np.minimum(1.0, v)
     
     # crank saturation
-    s = min(1.0, s * (1.0 + intensity * 0.5))
+    s = np.minimum(1.0, s * (1.0 + intensity * 0.5))
     return h, s, v
 
 @jit(nopython=True, cache=True)
@@ -222,10 +308,10 @@ def transform_color_blast(h, s, v, params):
     h = (h * 0.1 + 0.42) % 1.0
     
     # massive sat boost
-    s = min(1.0, s * 0.2 + 0.8 * intensity)
+    s = np.minimum(1.0, s * 0.2 + 0.8 * intensity)
     
     # brighten lighter areas
     if v > 0.3:
-        v = min(1.0, v * (1.0 + intensity * 0.3))
+        v = np.minimum(1.0, v * (1.0 + intensity * 0.3))
     
     return h, s, v

@@ -530,42 +530,46 @@ class DatabenderApp(QMainWindow):
         effect_parameters = {
             "reverser": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "bit_depth_reduction": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "selective_channel_corruption": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "chunk_duplication": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "palette_swap": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "color_range_shifter": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "zeta_invert": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "wave_propagation": { 
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "phantom_regions": {
                 "strength": 1.0,
-                "weight": 1.0
+                "weight": 0.0
             },
             "mirror": {
                 "strength": 1.0, # 1.0 str = 1 region, 2.0 = 2 regions, etc
+                "weight": 0.0
+            },
+            "bleed_blur": {
+                "strength": 1.0,
                 "weight": 1.0
             },
         }

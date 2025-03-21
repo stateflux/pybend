@@ -371,7 +371,7 @@ def hsv_to_rgb(h, s, v):
     else:
         return v, p, q
 
-@jit(nopython=True, parallel=True, cache=True)
+@jit(nopython=True, parallel=True, cache=False)
 def apply_hsv_transform(region, transform_func, params=None):
     """
     apply hsv transformation to an image region

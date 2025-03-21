@@ -14,6 +14,7 @@ from effects.zeta import ZetaInvert
 from effects.wave_propagation import WavePropagation
 from effects.phantom_regions import PhantomRegions
 from effects.mirror import Mirror
+from effects.bleed_blur import BleedBlur
 from effects.perf_logger import perf_logger
 
 EFFECTS = {
@@ -26,7 +27,8 @@ EFFECTS = {
     "zeta_invert": ZetaInvert(),
     "wave_propagation": WavePropagation(),
     "phantom_regions": PhantomRegions(),
-    "mirror": Mirror()
+    "mirror": Mirror(),
+    "bleed_blur": BleedBlur()
 }
 
 ## DEBUG: perf logging

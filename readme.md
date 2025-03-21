@@ -73,9 +73,8 @@ pybend includes several effects for image manipulation:
 
 ## todo:
 - perf:
-    - pytorch (cuda) support for O(1) timeline processing when i get my 3070 (this is probably never happening)
-    - another perf (maybe refactor) pass of palette_swap, color_range_shift, zeta, phantom_regions
-    - fix palette_swap compiler nonsense, more robust gc handling
+    - pytorch (cuda) support for O(n) timeline processing when i get my 3070 (this is probably never happening)
+    - another perf (maybe refactor) pass of color_range_shift, zeta, phantom_regions
 
 - general:
     - add cooler effects: context-aware fill/smear (high prio), radial fx, something fractals, wahwah
