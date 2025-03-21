@@ -63,6 +63,7 @@ pybend includes several effects for image manipulation:
 - **bitdepth reduction**: reduces bit depth for noisy posterization effect
 - **reverser**: reverses data segments
 - **mirror**: creates mirror effects
+- **bleed blur**: creates blurry color-bleeding/compression artifacts
 
 ## dependencies
 - python 3.6+
